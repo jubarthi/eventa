@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EVENTA — Painel do Organizador</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --accent: #B8975A;
+      --accent-light: #F5EDD9;
+      --bg: #F4F3F1;
+      --surface: #FFFFFF;
+      --surface-2: #F9F8F6;
+      --border: #E8E6E1;
+      --text: #1C1C1E;
+      --muted: #6E6E73;
+      --sidebar: #1C1C1E;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); margin: 0; min-height: 100vh; }
+    .font-serif { font-family: 'Playfair Display', serif; }
+
+    /* ── CARD ── */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.05); }
+
+    /* ── INPUT ── */
+    .inp { width:100%; padding:11px 14px; border:1.5px solid var(--border); border-radius:12px; font-family:'Inter',sans-serif; font-size:14px; color:var(--text); background:var(--surface-2); outline:none; transition:border-color .2s, box-shadow .2s; }
+    .inp:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(184,151,90,.12); background:#fff; }
+    .inp::placeholder { color:#A8A8AD; }
+    textarea.inp { resize: vertical; min-height: 80px; }
+
+    /* ── LABEL ── */
+    .lbl { display:block; font-size:11px; font-weight:600; letter-spacing:.6px; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+
+    /* ── BTN ── */
+    .btn { padding:10px 20px; border-radius:12px; font-family:'Inter',sans-serif; font-size:13px; font-weight:600; cursor:pointer; transition:opacity .2s, transform .15s; border:none; display:inline-flex; align-items:center; gap:8px; }
+    .btn:active { transform:scale(.97); }
+    .btn-gold  { background:var(--accent); color:#fff; }
+    .btn-ghost { background:transparent; color:var(--accent); border:1.5px solid var(--accent); }
+    .btn-dark  { background:var(--sidebar); color:#fff; }
+    .btn-danger{ background:#FFF1F0; color:#FF3B30; border:1.5px solid #FECDCA; }
+    .btn:disabled { opacity:.45; cursor:not-allowed; }
+
+    /* ── TOGGLE ── */
+    .toggle-wrap { display:flex; align-items:center; gap:12px; cursor:pointer; }
+    .toggle-track { width:44px; height:26px; border-radius:99px; background:var(--border); position:relative; transition:background .2s; flex-shrink:0; }
+    .toggle-track.on { background:var(--accent); }
+    .toggle-thumb { width:20px; height:20px; border-radius:50%; background:#fff; position:absolute; top:3px; left:3px; transition:transform .2s; box-shadow:0 1px 4px rgba(0,0,0,.2); }
+    .toggle-track.on .toggle-thumb { transform:translateX(18px); }
+
+    /* ── NAV SIDEBAR ── */
+    .nav-item { display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:12px; cursor:pointer; color:#9A9A9F; font-size:13px; font-weight:500; transition:background .15s, color .15s; width:100%; border:none; background:transparent; font-family:'Inter',sans-serif; text-align:left; }
+    .nav-item:hover { background:rgba(255,255,255,.06); color:#E5E3DF; }
+    .nav-item.active { background:rgba(184,151,90,.15); color:var(--accent); }
+    .nav-item svg { flex-shrink:0; }
+
+    /* ── STAT CARD ── */
+    .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:20px; }
+    .stat-num { font-family:'Playfair Display',serif; font-size:36px; font-weight:500; line-height:1; color:var(--accent); }
+    .stat-label { font-size:11px; color:var(--muted); font-weight:600; letter-spacing:.5px; text-transform:uppercase; margin-top:4px; }
+
+    /* ── TEMA CARD ── */
+    .tema-card { border:2px solid var(--border); border-radius:16px; padding:16px; cursor:pointer; transition:border-color .2s; text-align:center; }
+    .tema-card.selected { border-color:var(--accent); background:var(--accent-light); }
+
+    /* ── ANIMAÇÕES ── */
+    @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    .fade-in { animation:fadeIn .35s ease both; }
+
+    @keyframes spin { to{transform:rotate(360deg)} }
+    .spinner { width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:inline-block; }
+    .spinner-dark { border-color:rgba(28,28,30,.15);border-top-color:var(--accent); }
+
+    /* ── STEP WIZARD ── */
+    .step-num { width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0; }
+    .step-active  { background:var(--accent);color:#fff; }
+    .step-done    { background:#30D158;color:#fff; }
+    .step-pending { background:var(--border);color:var(--muted); }
+
+    /* ── CÓDIGO BOX ── */
+    .code-box { background:#1C1C1E;border-radius:14px;padding:16px;font-family:monospace;font-size:11px;color:#E5E3DF;line-height:1.6;overflow-x:auto;max-height:200px;overflow-y:auto; }
+
+    /* ── TABELA ── */
+    .tbl-row { display:grid;grid-template-columns:140px 80px 60px 1fr;gap:8px;padding:10px 0;border-bottom:1px solid var(--border);font-size:12px;align-items:center; }
+    .tbl-row:last-child { border-bottom:none; }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width:4px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:var(--border);border-radius:99px; }
+
+    /* ── LAYOUT DESKTOP ── */
+    @media(min-width:768px) {
+      .layout { display:grid; grid-template-columns:220px 1fr; min-height:100vh; }
+      .sidebar { background:var(--sidebar); position:sticky; top:0; height:100vh; overflow-y:auto; }
+      .main-content { overflow-y:auto; }
+    }
+    @media(max-width:767px) {
+      .sidebar { display:none; }
+      .mobile-nav { display:flex; }
+    }
+    .mobile-nav { display:none; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════
+     TELA SETUP (primeira vez)
+══════════════════════════════════ -->
+<!-- ══════════════════════════════════
+     TELA LOGIN
+══════════════════════════════════ -->
+<div id="tela-login" class="min-h-screen flex items-center justify-center px-5 py-10" style="background:var(--bg)">
+  <div class="w-full max-w-sm fade-in">
+    <div class="text-center mb-8">
+      <img src="logo.png" alt="EVENTA" class="h-10 mx-auto mb-4 object-contain" />
+      <p class="text-xs uppercase tracking-widest font-medium" style="color:var(--accent)">PAINEL DO ORGANIZADOR</p>
+    </div>
+
+    <div class="card p-7">
+      <h1 class="font-serif text-2xl font-medium mb-1 text-center">Entrar</h1>
+      <p class="text-sm text-center mb-6" style="color:var(--muted)">Acesso restrito ao organizador</p>
+
+      <div class="mb-4">
+        <label class="lbl">Email</label>
+        <input id="login-email" class="inp" type="email" placeholder="seu@email.com" autocomplete="email" />
+      </div>
+
+      <div class="mb-2">
+        <label class="lbl">Senha</label>
+        <div class="relative">
+          <input id="login-senha" class="inp" type="password" placeholder="••••••••" autocomplete="current-password" style="padding-right:44px" />
+          <button onclick="toggleSenhaVis('login-senha', this)" type="button"
+            class="absolute right-3 top-1/2 -translate-y-1/2 text-xs" style="color:var(--muted)">👁</button>
+        </div>
+      </div>
+
+      <div class="text-right mb-5">
+        <button onclick="mostrarEsqueceuSenha()" class="text-xs" style="color:var(--accent)">Esqueci minha senha</button>
+      </div>
+
+      <div id="erro-login" class="rounded-xl p-3 text-xs mb-4 hidden" style="background:#FFF1F0;color:#FF3B30;border:1px solid #FECDCA"></div>
+
+      <button class="btn btn-gold w-full justify-center py-4 text-base" onclick="fazerLogin()">
+        Entrar no Painel ✦
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     TELA ESQUECI SENHA
+══════════════════════════════════ -->
+<div id="tela-esqueceu" class="min-h-screen flex items-center justify-center px-5 py-10 hidden" style="background:var(--bg)">
+  <div class="w-full max-w-sm fade-in">
+    <div class="text-center mb-8">
+      <img src="logo.png" alt="EVENTA" class="h-10 mx-auto mb-4 object-contain" />
+    </div>
+
+    <div class="card p-7">
+      <button onclick="mostrarLogin()" class="flex items-center gap-2 text-xs mb-5" style="color:var(--muted)">
+        ← Voltar ao login
+      </button>
+      <h1 class="font-serif text-xl font-medium mb-1">Esqueci minha senha</h1>
+      <p class="text-sm mb-5" style="color:var(--muted)">Digite seu email e enviaremos um link para criar uma nova senha.</p>
+
+      <div class="mb-4">
+        <label class="lbl">Seu Email</label>
+        <input id="reset-email" class="inp" type="email" placeholder="seu@email.com" />
+      </div>
+
+      <div id="msg-esqueceu" class="rounded-xl p-3 text-xs mb-4 hidden"></div>
+
+      <button class="btn btn-gold w-full justify-center" onclick="enviarResetEmail()">
+        Enviar Link de Redefinição
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     TELA REDEFINIR SENHA
+══════════════════════════════════ -->
+<div id="tela-reset" class="min-h-screen flex items-center justify-center px-5 py-10 hidden" style="background:var(--bg)">
+  <div class="w-full max-w-sm fade-in">
+    <div class="text-center mb-8">
+      <img src="logo.png" alt="EVENTA" class="h-10 mx-auto mb-4 object-contain" />
+    </div>
+
+    <div class="card p-7">
+      <h1 class="font-serif text-xl font-medium mb-1">Nova Senha</h1>
+      <p class="text-sm mb-5" style="color:var(--muted)">Escolha uma senha segura para sua conta.</p>
+
+      <div class="mb-4">
+        <label class="lbl">Nova Senha</label>
+        <div class="relative">
+          <input id="nova-senha" class="inp" type="password" placeholder="Mínimo 6 caracteres" style="padding-right:44px" />
+          <button onclick="toggleSenhaVis('nova-senha', this)" type="button"
+            class="absolute right-3 top-1/2 -translate-y-1/2 text-xs" style="color:var(--muted)">👁</button>
+        </div>
+      </div>
+      <div class="mb-5">
+        <label class="lbl">Confirmar Nova Senha</label>
+        <input id="nova-senha-conf" class="inp" type="password" placeholder="Repita a senha" />
+      </div>
+
+      <div id="erro-reset" class="rounded-xl p-3 text-xs mb-4 hidden" style="background:#FFF1F0;color:#FF3B30;border:1px solid #FECDCA"></div>
+
+      <button class="btn btn-gold w-full justify-center" onclick="confirmarResetSenha()">
+        Salvar Nova Senha
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- SETUP -->
+<div id="tela-setup" class="min-h-screen flex items-center justify-center px-5 py-10 hidden" style="background:var(--bg)">
+  <div class="w-full max-w-lg fade-in">
+
+    <div class="text-center mb-8">
+      <img src="logo.png" alt="EVENTA" class="h-10 mx-auto mb-4 object-contain" />
+      <h1 class="font-serif text-2xl font-medium mb-2">Configuração Inicial</h1>
+      <p class="text-sm" style="color:var(--muted)">Conecte seu Google Apps Script para começar</p>
+    </div>
+
+    <!-- PASSO 1 -->
+    <div class="card p-6 mb-4">
+      <div class="flex gap-4">
+        <div class="step-num step-active" style="margin-top:2px">1</div>
+        <div class="flex-1">
+          <p class="font-semibold mb-1">Abra o Google Apps Script</p>
+          <p class="text-sm mb-3" style="color:var(--muted)">Clique no botão abaixo. Vai abrir uma nova aba no seu navegador.</p>
+          <a href="https://script.google.com" target="_blank" class="btn btn-dark text-sm inline-flex mb-3">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Abrir Google Apps Script
+          </a>
+          <div class="rounded-xl p-4 text-sm space-y-2" style="background:var(--surface-2);border:1px solid var(--border)">
+            <p class="font-semibold text-xs uppercase tracking-wider mb-2" style="color:var(--accent)">O que fazer lá:</p>
+            <p>👉 Na tela que abrir, clique em <strong>"Novo projeto"</strong> (botão azul no canto superior esquerdo)</p>
+            <p>👉 Vai aparecer um editor com um código. <strong>Selecione tudo (Ctrl+A)</strong> e <strong>apague</strong></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PASSO 2 -->
+    <div class="card p-6 mb-4">
+      <div class="flex gap-4">
+        <div class="step-num step-active" style="margin-top:2px">2</div>
+        <div class="flex-1">
+          <p class="font-semibold mb-3">Substitua o código que aparece no editor</p>
+
+          <!-- Visual da tela do Apps Script -->
+          <div class="rounded-xl overflow-hidden mb-4" style="border:1px solid var(--border)">
+            <div class="px-3 py-2 text-xs font-semibold" style="background:#1C1C1E;color:#9A9A9F">Você vai ver isso no Apps Script:</div>
+            <div class="p-3" style="background:#1e1e2e;font-family:monospace;font-size:12px;color:#cdd6f4">
+              <span style="color:#cba6f7">function</span> <span style="color:#89b4fa">myFunction</span>() {<br>
+              &nbsp;&nbsp;<span style="color:#585b70">// ← esse código aqui</span><br>
+              }
+            </div>
+          </div>
+
+          <div class="rounded-xl p-4 text-sm space-y-3 mb-4" style="background:#FFF8EC;border:1px solid #F5D9A0">
+            <p class="font-semibold text-xs uppercase tracking-wider" style="color:#8B6914">O que fazer:</p>
+            <div class="flex gap-3 items-start">
+              <span class="text-base mt-0.5">1️⃣</span>
+              <p>Clique em qualquer lugar <strong>dentro da área de código</strong> (na área escura com o texto)</p>
+            </div>
+            <div class="flex gap-3 items-start">
+              <span class="text-base mt-0.5">2️⃣</span>
+              <p>Pressione <strong>Ctrl + A</strong> para selecionar tudo</p>
+            </div>
+            <div class="flex gap-3 items-start">
+              <span class="text-base mt-0.5">3️⃣</span>
+              <p>Pressione <strong>Delete</strong> (ou Backspace) para apagar</p>
+            </div>
+            <div class="flex gap-3 items-start">
+              <span class="text-base mt-0.5">4️⃣</span>
+              <p>Clique no botão abaixo para copiar o código do EVENTA, depois volte no Apps Script e pressione <strong>Ctrl + V</strong> para colar</p>
+            </div>
+            <div class="flex gap-3 items-start">
+              <span class="text-base mt-0.5">5️⃣</span>
+              <p>Pressione <strong>Ctrl + S</strong> para salvar — se pedir nome do projeto, escreva <strong>EVENTA</strong> e clique OK</p>
+            </div>
+          </div>
+
+          <button class="btn btn-gold w-full justify-center" onclick="copiarCodigo()">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+            <span id="btn-copiar-txt">📋 Copiar Código do EVENTA</span>
+          </button>
+          <div class="code-box mt-3 hidden" id="code-preview" style="max-height:100px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PASSO 3 -->
+    <div class="card p-6 mb-4">
+      <div class="flex gap-4">
+        <div class="step-num step-active" style="margin-top:2px">3</div>
+        <div class="flex-1">
+          <p class="font-semibold mb-2">Publique o código (Deploy)</p>
+          <div class="rounded-xl p-4 text-sm space-y-3" style="background:var(--surface-2);border:1px solid var(--border)">
+            <p class="font-semibold text-xs uppercase tracking-wider" style="color:var(--accent)">Siga exatamente estes passos:</p>
+            <div class="flex gap-3">
+              <span class="text-lg">1️⃣</span>
+              <p>No Apps Script, clique no botão azul <strong>"Implantar"</strong> (no canto superior direito da tela)</p>
+            </div>
+            <div class="flex gap-3">
+              <span class="text-lg">2️⃣</span>
+              <p>Clique em <strong>"Nova implantação"</strong> no menu que aparecer</p>
+            </div>
+            <div class="flex gap-3">
+              <span class="text-lg">3️⃣</span>
+              <p>Ao lado de "Tipo", clique na <strong>engrenagem ⚙️</strong> e selecione <strong>"App da Web"</strong></p>
+            </div>
+            <div class="flex gap-3">
+              <span class="text-lg">4️⃣</span>
+              <p>Em <strong>"Executar como"</strong> deixe: <strong>Eu mesmo</strong></p>
+            </div>
+            <div class="flex gap-3">
+              <span class="text-lg">5️⃣</span>
+              <p>Em <strong>"Quem tem acesso"</strong> escolha: <strong>Qualquer pessoa</strong></p>
+            </div>
+            <div class="flex gap-3">
+              <span class="text-lg">6️⃣</span>
+              <p>Clique em <strong>"Implantar"</strong> (botão azul)</p>
+            </div>
+            <div class="flex gap-3">
+              <span class="text-lg">7️⃣</span>
+              <p>Se aparecer uma tela pedindo autorização, clique em <strong>"Autorizar acesso"</strong>, escolha sua conta Google e clique em <strong>"Permitir"</strong></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PASSO 4 -->
+    <div class="card p-6 mb-6">
+      <div class="flex gap-4">
+        <div class="step-num step-active" style="margin-top:2px">4</div>
+        <div class="flex-1">
+          <p class="font-semibold mb-2">Copie e cole o link gerado aqui</p>
+          <div class="rounded-xl p-4 text-sm mb-4 space-y-2" style="background:var(--surface-2);border:1px solid var(--border)">
+            <p class="font-semibold text-xs uppercase tracking-wider mb-2" style="color:var(--accent)">Onde achar o link:</p>
+            <p>👉 Após o passo anterior, vai aparecer uma caixa com <strong>"URL do app da Web"</strong></p>
+            <p>👉 Clique no botão <strong>"Copiar"</strong> ao lado dessa URL</p>
+            <p>👉 Cole no campo abaixo 👇</p>
+          </div>
+          <label class="lbl">URL do App (começa com https://script.google.com/...)</label>
+          <input id="inp-script-url" class="inp mb-2" type="url" placeholder="https://script.google.com/macros/s/XXXXXXX/exec" />
+          <div id="erro-url" class="rounded-xl p-3 text-xs mb-3 hidden" style="background:#FFF1F0;color:#FF3B30;border:1px solid #FECDCA">
+            ⚠️ URL inválida. Verifique se copiou o link completo que termina com <strong>/exec</strong>
+          </div>
+          <button class="btn btn-gold w-full justify-center text-base py-4" onclick="salvarScriptUrl()">
+            ✦ Entrar no Painel EVENTA
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="rounded-2xl p-4 text-center text-xs" style="background:var(--surface-2);color:var(--muted)">
+      🔒 Seus dados ficam 100% no seu Google Drive.<br>Nenhuma informação é enviada para outros servidores.
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════
+     PAINEL PRINCIPAL
+══════════════════════════════════ -->
+<div id="tela-painel" class="hidden">
+  <div class="layout">
+
+    <!-- ── SIDEBAR ── -->
+    <aside class="sidebar flex flex-col p-5">
+      <div class="mb-8">
+        <img src="logo.png" alt="EVENTA" class="h-7 object-contain mb-1" />
+        <p class="text-xs" style="color:#6E6E73;letter-spacing:2px">PAINEL</p>
+      </div>
+
+      <nav class="flex-1 space-y-1">
+        <button class="nav-item active" onclick="navegarPara('dashboard')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          Dashboard
+        </button>
+        <button class="nav-item" onclick="navegarPara('evento')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          Evento
+        </button>
+        <button class="nav-item" onclick="navegarPara('design')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r="3.5"/><circle cx="8" cy="17" r="3"/><circle cx="19" cy="16" r="2.5"/></svg>
+          Design & Temas
+        </button>
+        <button class="nav-item" onclick="navegarPara('conexoes')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+          Conexões
+        </button>
+        <button class="nav-item" onclick="navegarPara('qrcode')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="4" height="4" rx=".5"/><rect x="19" y="19" width="2" height="2"/><rect x="19" y="13" width="2" height="4"/><rect x="13" y="19" width="4" height="2"/></svg>
+          QR Code
+        </button>
+      </nav>
+
+      <div class="pt-4 border-t" style="border-color:#333">
+        <button class="nav-item text-red-400 hover:text-red-300" onclick="desconectar()">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Desconectar
+        </button>
+      </div>
+    </aside>
+
+    <!-- ── CONTEÚDO PRINCIPAL ── -->
+    <main class="main-content p-6 md:p-8">
+
+      <!-- Nav Mobile -->
+      <div class="mobile-nav items-center justify-between mb-6 card px-4 py-3">
+        <img src="logo.png" alt="EVENTA" class="h-6 object-contain" />
+        <div class="flex gap-2">
+          <button class="btn btn-ghost text-xs py-2 px-3" onclick="navegarPara('dashboard')">📊</button>
+          <button class="btn btn-ghost text-xs py-2 px-3" onclick="navegarPara('evento')">📅</button>
+          <button class="btn btn-ghost text-xs py-2 px-3" onclick="navegarPara('design')">🎨</button>
+          <button class="btn btn-ghost text-xs py-2 px-3" onclick="navegarPara('qrcode')">📱</button>
+        </div>
+      </div>
+
+      <!-- ════ DASHBOARD ════ -->
+      <section id="sec-dashboard" class="fade-in">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h2 class="font-serif text-2xl font-medium">Dashboard</h2>
+            <p id="dash-evento-nome" class="text-sm mt-0.5" style="color:var(--muted)">Carregando evento...</p>
+          </div>
+          <button class="btn btn-ghost text-xs" onclick="carregarStats()">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+            Atualizar
+          </button>
+        </div>
+
+        <!-- Cards de Stats -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div class="stat-card">
+            <div class="text-2xl mb-2">📷</div>
+            <div id="stat-fotos"  class="stat-num">—</div>
+            <div class="stat-label">Fotos</div>
+          </div>
+          <div class="stat-card">
+            <div class="text-2xl mb-2">🎬</div>
+            <div id="stat-videos" class="stat-num">—</div>
+            <div class="stat-label">Vídeos</div>
+          </div>
+          <div class="stat-card">
+            <div class="text-2xl mb-2">👤</div>
+            <div id="stat-conv"   class="stat-num">—</div>
+            <div class="stat-label">Convidados</div>
+          </div>
+          <div class="stat-card">
+            <div class="text-2xl mb-2">✦</div>
+            <div id="stat-total"  class="stat-num">—</div>
+            <div class="stat-label">Total</div>
+          </div>
+        </div>
+
+        <!-- Status do evento -->
+        <div class="card p-5 mb-6">
+          <div class="flex items-center justify-between mb-4">
+            <p class="font-semibold text-sm">Status do Evento</p>
+            <div id="status-badge" class="px-3 py-1 rounded-full text-xs font-semibold">—</div>
+          </div>
+          <div class="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p class="text-xs uppercase tracking-wider mb-1" style="color:var(--muted)">Código</p>
+              <p id="info-codigo" class="font-semibold text-base tracking-widest" style="color:var(--accent)">—</p>
+            </div>
+            <div>
+              <p class="text-xs uppercase tracking-wider mb-1" style="color:var(--muted)">Encerra em</p>
+              <p id="info-encerra" class="font-medium">—</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recentes -->
+        <div class="card p-5">
+          <p class="font-semibold text-sm mb-4">Últimas Chegadas</p>
+          <div id="lista-recentes">
+            <p class="text-sm text-center py-6" style="color:var(--muted)">Nenhum envio ainda</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════ EVENTO ════ -->
+      <section id="sec-evento" class="fade-in hidden">
+        <div class="mb-6">
+          <h2 class="font-serif text-2xl font-medium">Configurar Evento</h2>
+          <p class="text-sm mt-0.5" style="color:var(--muted)">Personalize todos os textos e dados do evento</p>
+        </div>
+
+        <div class="card p-6 mb-4">
+          <div class="grid md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="lbl">Título do Evento *</label>
+              <input id="ev-titulo" class="inp" type="text" placeholder="ex: Casamento Priscila & Wagner" />
+            </div>
+            <div>
+              <label class="lbl">Subtítulo</label>
+              <input id="ev-subtitulo" class="inp" type="text" placeholder="ex: Unidos para sempre" />
+            </div>
+          </div>
+
+          <div class="grid md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="lbl">Data do Evento *</label>
+              <input id="ev-data" class="inp" type="date" />
+            </div>
+            <div>
+              <label class="lbl">Código do Evento *</label>
+              <input id="ev-codigo" class="inp uppercase font-semibold tracking-widest" type="text" maxlength="12" placeholder="ex: PW04" />
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label class="lbl">Mensagem de Boas-vindas</label>
+            <textarea id="ev-mensagem" class="inp" placeholder="Uma mensagem especial para seus convidados..."></textarea>
+          </div>
+
+          <div class="mb-4">
+            <label class="lbl">Mensagem de Agradecimento</label>
+            <input id="ev-agradecimento" class="inp" type="text" placeholder="ex: Muito obrigado pelas memórias! 💛" />
+          </div>
+        </div>
+
+        <!-- Duração -->
+        <div class="card p-6 mb-4">
+          <p class="font-semibold text-sm mb-4">⏱ Duração do Recebimento</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <label class="lbl">Encerrar em</label>
+              <select id="ev-duracao" class="inp" onchange="onDuracaoChange()">
+                <option value="">Sem prazo (manual)</option>
+                <option value="6">6 horas</option>
+                <option value="12">12 horas</option>
+                <option value="24">1 dia</option>
+                <option value="48">2 dias</option>
+                <option value="72">3 dias</option>
+                <option value="168">1 semana</option>
+                <option value="custom">Data/hora específica</option>
+              </select>
+            </div>
+            <div id="wrap-data-fim" class="hidden">
+              <label class="lbl">Data e hora de encerramento</label>
+              <input id="ev-data-fim" class="inp" type="datetime-local" />
+            </div>
+          </div>
+        </div>
+
+        <div id="erro-evento" class="text-sm text-red-500 mb-3 hidden"></div>
+        <button class="btn btn-gold" onclick="salvarEvento()">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Salvar Configurações
+        </button>
+      </section>
+
+      <!-- ════ DESIGN ════ -->
+      <section id="sec-design" class="fade-in hidden">
+        <div class="mb-6">
+          <h2 class="font-serif text-2xl font-medium">Design & Temas</h2>
+          <p class="text-sm mt-0.5" style="color:var(--muted)">Personalize a aparência da página dos convidados</p>
+        </div>
+
+        <!-- Seleção de Temas -->
+        <div class="card p-6 mb-4">
+          <p class="font-semibold text-sm mb-4">Temas</p>
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+
+            <div class="tema-card selected" data-tema="classico" onclick="selecionarTema(this, '#B8975A', '#F9F8F6')">
+              <div class="w-full h-12 rounded-xl mb-3" style="background:linear-gradient(135deg,#F9F8F6,#E8E6E1)"></div>
+              <div class="w-6 h-6 rounded-full mx-auto mb-2" style="background:#B8975A"></div>
+              <p class="text-xs font-semibold">Clássico</p>
+              <p class="text-xs" style="color:var(--muted)">Ouro & Creme</p>
+            </div>
+
+            <div class="tema-card" data-tema="luxo" onclick="selecionarTema(this, '#8B6914', '#FAFAF8')">
+              <div class="w-full h-12 rounded-xl mb-3" style="background:linear-gradient(135deg,#FAFAF8,#F0EBE0)"></div>
+              <div class="w-6 h-6 rounded-full mx-auto mb-2" style="background:#8B6914"></div>
+              <p class="text-xs font-semibold">Luxo</p>
+              <p class="text-xs" style="color:var(--muted)">Âmbar & Marfim</p>
+            </div>
+
+            <div class="tema-card" data-tema="moderno" onclick="selecionarTema(this, '#2D2D2D', '#F8F8F8')">
+              <div class="w-full h-12 rounded-xl mb-3" style="background:linear-gradient(135deg,#F8F8F8,#EBEBEB)"></div>
+              <div class="w-6 h-6 rounded-full mx-auto mb-2" style="background:#2D2D2D"></div>
+              <p class="text-xs font-semibold">Moderno</p>
+              <p class="text-xs" style="color:var(--muted)">Carbono & Branco</p>
+            </div>
+
+            <div class="tema-card" data-tema="rose" onclick="selecionarTema(this, '#C2547A', '#FFF8F9')">
+              <div class="w-full h-12 rounded-xl mb-3" style="background:linear-gradient(135deg,#FFF8F9,#FCE8EF)"></div>
+              <div class="w-6 h-6 rounded-full mx-auto mb-2" style="background:#C2547A"></div>
+              <p class="text-xs font-semibold">Rose</p>
+              <p class="text-xs" style="color:var(--muted)">Rosa & Pérola</p>
+            </div>
+
+            <div class="tema-card" data-tema="sage" onclick="selecionarTema(this, '#5A7D5A', '#F7F9F7')">
+              <div class="w-full h-12 rounded-xl mb-3" style="background:linear-gradient(135deg,#F7F9F7,#E8EFE8)"></div>
+              <div class="w-6 h-6 rounded-full mx-auto mb-2" style="background:#5A7D5A"></div>
+              <p class="text-xs font-semibold">Sage</p>
+              <p class="text-xs" style="color:var(--muted)">Verde & Menta</p>
+            </div>
+
+            <div class="tema-card" data-tema="azul" onclick="selecionarTema(this, '#3B6EA8', '#F7F9FC')">
+              <div class="w-full h-12 rounded-xl mb-3" style="background:linear-gradient(135deg,#F7F9FC,#E8EEF7)"></div>
+              <div class="w-6 h-6 rounded-full mx-auto mb-2" style="background:#3B6EA8"></div>
+              <p class="text-xs font-semibold">Azul Real</p>
+              <p class="text-xs" style="color:var(--muted)">Safira & Gelo</p>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Cor personalizada -->
+        <div class="card p-6 mb-4">
+          <p class="font-semibold text-sm mb-4">Personalizar Cores</p>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="lbl">Cor de Destaque</label>
+              <div class="flex gap-2 items-center">
+                <input id="cor-accent" type="color" value="#B8975A" class="w-10 h-10 rounded-xl border-0 cursor-pointer" style="border:1.5px solid var(--border);padding:2px" />
+                <input id="cor-accent-hex" class="inp flex-1" type="text" value="#B8975A" maxlength="7" />
+              </div>
+            </div>
+            <div>
+              <label class="lbl">Cor de Fundo</label>
+              <div class="flex gap-2 items-center">
+                <input id="cor-bg" type="color" value="#F9F8F6" class="w-10 h-10 rounded-xl cursor-pointer" style="border:1.5px solid var(--border);padding:2px" />
+                <input id="cor-bg-hex" class="inp flex-1" type="text" value="#F9F8F6" maxlength="7" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-gold" onclick="salvarDesign()">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Salvar Design
+        </button>
+      </section>
+
+      <!-- ════ CONEXÕES ════ -->
+      <section id="sec-conexoes" class="fade-in hidden">
+        <div class="mb-6">
+          <h2 class="font-serif text-2xl font-medium">Conexões</h2>
+          <p class="text-sm mt-0.5" style="color:var(--muted)">Configure integrações e notificações</p>
+        </div>
+
+        <!-- Gmail -->
+        <div class="card p-6 mb-4">
+          <div class="flex items-start justify-between mb-4">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg" style="background:#FFF0F0">📧</div>
+              <div>
+                <p class="font-semibold text-sm">Notificações por Gmail</p>
+                <p class="text-xs" style="color:var(--muted)">Receba um e-mail a cada envio</p>
+              </div>
+            </div>
+            <div class="toggle-wrap" onclick="toggleGmail()">
+              <div id="toggle-gmail" class="toggle-track"><div class="toggle-thumb"></div></div>
+            </div>
+          </div>
+          <div id="gmail-config" class="hidden">
+            <label class="lbl">E-mail para notificações</label>
+            <input id="gmail-dest" class="inp" type="email" placeholder="seu@email.com" />
+          </div>
+        </div>
+
+        <!-- WhatsApp Noivos -->
+        <div class="card p-6 mb-4">
+          <div class="flex items-start justify-between mb-4">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg" style="background:#F0FFF4">💬</div>
+              <div>
+                <p class="font-semibold text-sm">WhatsApp dos Noivos</p>
+                <p class="text-xs" style="color:var(--muted)">Exibe botões para vídeos maiores</p>
+              </div>
+            </div>
+            <div class="toggle-wrap" onclick="toggleWhatsapp()">
+              <div id="toggle-wpp" class="toggle-track"><div class="toggle-thumb"></div></div>
+            </div>
+          </div>
+          <div id="wpp-config" class="hidden">
+            <div class="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label class="lbl">DDD Noivo</label>
+                <input id="noivo-ddd" class="inp text-center" type="tel" maxlength="3" placeholder="11" />
+              </div>
+              <div>
+                <label class="lbl">Número Noivo</label>
+                <input id="noivo-tel" class="inp" type="tel" placeholder="99999-9999" />
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="lbl">DDD Noiva</label>
+                <input id="noiva-ddd" class="inp text-center" type="tel" maxlength="3" placeholder="11" />
+              </div>
+              <div>
+                <label class="lbl">Número Noiva</label>
+                <input id="noiva-tel" class="inp" type="tel" placeholder="99999-9999" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Drive & Script -->
+        <div class="card p-6 mb-4">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg" style="background:#FFF8E7">💾</div>
+            <div>
+              <p class="font-semibold text-sm">Google Drive & Sheets</p>
+              <p class="text-xs" style="color:var(--muted)">Pastas e planilha criadas automaticamente</p>
+            </div>
+            <span class="ml-auto px-2 py-1 rounded-full text-xs font-semibold" style="background:#F0FFF4;color:#30D158">Ativo</span>
+          </div>
+          <p class="text-xs" style="color:var(--muted)">Pasta: <strong style="color:var(--text)">EVENTA/Evento_[CÓDIGO]</strong> no seu Google Drive</p>
+        </div>
+
+        <div id="erro-conexoes" class="text-sm text-red-500 mb-3 hidden"></div>
+        <button class="btn btn-gold" onclick="salvarConexoes()">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Salvar Conexões
+        </button>
+      </section>
+
+      <!-- ════ QR CODE ════ -->
+      <section id="sec-qrcode" class="fade-in hidden">
+        <div class="mb-6">
+          <h2 class="font-serif text-2xl font-medium">QR Code</h2>
+          <p class="text-sm mt-0.5" style="color:var(--muted)">Gere e compartilhe com seus convidados</p>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-6">
+          <!-- Config QR -->
+          <div class="card p-6">
+            <p class="font-semibold text-sm mb-4">Configurar Link</p>
+            <div class="mb-4">
+              <label class="lbl">URL do GitHub Pages *</label>
+              <input id="qr-github-url" class="inp" type="url" placeholder="https://seunome.github.io/eventa/" />
+              <p class="text-xs mt-1.5" style="color:var(--muted)">A URL onde você hospedou o index.html</p>
+            </div>
+            <button class="btn btn-gold w-full justify-center" onclick="gerarQR()">
+              Gerar QR Code
+            </button>
+          </div>
+
+          <!-- QR Preview -->
+          <div class="card p-6 flex flex-col items-center justify-center">
+            <div id="qr-placeholder" class="text-center py-8">
+              <div class="text-4xl mb-3">📱</div>
+              <p class="text-sm" style="color:var(--muted)">Configure e gere o QR Code</p>
+            </div>
+            <div id="qr-container" class="hidden flex-col items-center">
+              <div id="qr-canvas" class="p-4 rounded-2xl mb-4" style="background:#fff;border:1px solid var(--border)"></div>
+              <p id="qr-codigo-label" class="text-xs font-semibold tracking-widest mb-4" style="color:var(--accent)"></p>
+              <div class="flex gap-3">
+                <button class="btn btn-gold text-xs" onclick="downloadQR('png')">Baixar PNG</button>
+                <button class="btn btn-ghost text-xs" onclick="copiarLink()">Copiar Link</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Link direto -->
+        <div class="card p-5 mt-4">
+          <p class="font-semibold text-sm mb-2">Link Direto</p>
+          <div class="flex gap-2">
+            <input id="link-direto" class="inp flex-1 text-xs" type="text" readonly placeholder="Gere o QR Code para ver o link" style="color:var(--muted)" />
+            <button class="btn btn-ghost text-xs" onclick="copiarLink()">Copiar</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════
+     TOAST
+══════════════════════════════════ -->
+<div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 px-5 py-3 rounded-2xl text-sm font-medium text-white shadow-xl hidden z-50 transition-all"
+     style="background:var(--sidebar);max-width:320px;text-align:center">
+</div>
+
+
+<!-- ══════════════════════════════════
+     SCRIPT PRINCIPAL
+══════════════════════════════════ -->
+<script>
+// ── ESTADO ──
+const S = {
+  scriptUrl:    '',
+  sessionToken: '',
+  nomeAdmin:    '',
+  resetToken:   '',
+  pendingLogin: null,
+  config:       {},
+  qrUrl:        '',
+  temaAtual:    { accent: '#B8975A', bg: '#F9F8F6' }
+};
+
+// ── INIT ──
+window.addEventListener('DOMContentLoaded', () => {
+
+  // Verificar se há token de reset na URL
+  const params     = new URLSearchParams(window.location.search);
+  const resetToken = params.get('reset');
+  if (resetToken) {
+    S.resetToken = resetToken;
+    mostrarTela('tela-reset');
+    return;
+  }
+
+  // Verificar sessão salva
+  const session   = JSON.parse(localStorage.getItem('eventa_session') || 'null');
+  const scriptUrl = localStorage.getItem('eventa_script_url');
+
+  if (session && session.token && scriptUrl) {
+    S.scriptUrl   = scriptUrl;
+    S.sessionToken = session.token;
+    S.nomeAdmin   = session.nome || 'Admin';
+    // Ir direto para o painel ou setup
+    entrarNoPainel();
+  } else {
+    // Mostrar login
+    mostrarTela('tela-login');
+    document.getElementById('login-email').addEventListener('keydown', e => { if (e.key === 'Enter') fazerLogin(); });
+    document.getElementById('login-senha').addEventListener('keydown', e => { if (e.key === 'Enter') fazerLogin(); });
+  }
+
+  // Sync color pickers
+  document.getElementById('cor-accent').addEventListener('input', e => {
+    document.getElementById('cor-accent-hex').value = e.target.value;
+  });
+  document.getElementById('cor-bg').addEventListener('input', e => {
+    document.getElementById('cor-bg-hex').value = e.target.value;
+  });
+  document.getElementById('cor-accent-hex').addEventListener('input', e => {
+    if (/^#[0-9A-Fa-f]{6}$/.test(e.target.value)) document.getElementById('cor-accent').value = e.target.value;
+  });
+  document.getElementById('cor-bg-hex').addEventListener('input', e => {
+    if (/^#[0-9A-Fa-f]{6}$/.test(e.target.value)) document.getElementById('cor-bg').value = e.target.value;
+  });
+});
+
+// ── LOGIN ──
+async function fazerLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const senha = document.getElementById('login-senha').value;
+  const errEl = document.getElementById('erro-login');
+  errEl.classList.add('hidden');
+
+  if (!email || !senha) {
+    errEl.textContent = 'Preencha email e senha.';
+    errEl.classList.remove('hidden'); return;
+  }
+
+  const scriptUrl = localStorage.getItem('eventa_script_url');
+  if (!scriptUrl) {
+    // Sem script configurado ainda — salvar credenciais temporariamente e ir para setup
+    S.pendingLogin = { email, senha };
+    mostrarTela('tela-setup');
+    carregarCodigoSetup();
+    return;
+  }
+
+  S.scriptUrl = scriptUrl;
+
+  try {
+    const res = await apiPost({ action: 'login', email, senha });
+    if (res.error) { errEl.textContent = res.error; errEl.classList.remove('hidden'); return; }
+    S.sessionToken = res.token;
+    S.nomeAdmin    = res.nome;
+    localStorage.setItem('eventa_session', JSON.stringify({ token: res.token, nome: res.nome }));
+    entrarNoPainel();
+  } catch {
+    errEl.textContent = 'Erro de conexão. Verifique sua internet.';
+    errEl.classList.remove('hidden');
+  }
+}
+
+function entrarNoPainel() {
+  const scriptUrl = localStorage.getItem('eventa_script_url');
+  if (!scriptUrl) {
+    mostrarTela('tela-setup');
+    carregarCodigoSetup();
+  } else {
+    mostrarTela('tela-painel');
+    carregarTudo();
+  }
+}
+
+function mostrarLogin() { mostrarTela('tela-login'); }
+
+function mostrarEsqueceuSenha() { mostrarTela('tela-esqueceu'); }
+
+async function enviarResetEmail() {
+  const email  = document.getElementById('reset-email').value.trim();
+  const msgEl  = document.getElementById('msg-esqueceu');
+  const scriptUrl = localStorage.getItem('eventa_script_url');
+
+  if (!email) { msgEl.textContent = 'Digite seu email.'; msgEl.style.background='#FFF1F0'; msgEl.style.color='#FF3B30'; msgEl.classList.remove('hidden'); return; }
+  if (!scriptUrl) { msgEl.textContent = 'Configure o sistema antes de usar esta função.'; msgEl.style.background='#FFF1F0'; msgEl.style.color='#FF3B30'; msgEl.classList.remove('hidden'); return; }
+
+  S.scriptUrl = scriptUrl;
+  const painelUrl = window.location.href.split('?')[0];
+
+  try {
+    await apiPost({ action: 'esqueceuSenha', email, painelUrl });
+    msgEl.textContent   = '✓ Se o email estiver cadastrado, você receberá o link em instantes.';
+    msgEl.style.background = '#F0FFF4';
+    msgEl.style.color      = '#30D158';
+    msgEl.style.border     = '1px solid #BBF7D0';
+    msgEl.classList.remove('hidden');
+  } catch {
+    msgEl.textContent = 'Erro ao enviar. Tente novamente.';
+    msgEl.style.background='#FFF1F0'; msgEl.style.color='#FF3B30';
+    msgEl.classList.remove('hidden');
+  }
+}
+
+async function confirmarResetSenha() {
+  const nova    = document.getElementById('nova-senha').value;
+  const conf    = document.getElementById('nova-senha-conf').value;
+  const errEl   = document.getElementById('erro-reset');
+  const scriptUrl = localStorage.getItem('eventa_script_url');
+
+  errEl.classList.add('hidden');
+  if (nova.length < 6)  { errEl.textContent = 'A senha deve ter ao menos 6 caracteres.'; errEl.classList.remove('hidden'); return; }
+  if (nova !== conf)    { errEl.textContent = 'As senhas não coincidem.'; errEl.classList.remove('hidden'); return; }
+  if (!scriptUrl)       { errEl.textContent = 'URL do script não encontrada.'; errEl.classList.remove('hidden'); return; }
+
+  S.scriptUrl = scriptUrl;
+  try {
+    const res = await apiPost({ action: 'redefinirSenha', token: S.resetToken, novaSenha: nova });
+    if (res.error) { errEl.textContent = res.error; errEl.classList.remove('hidden'); return; }
+    toast('Senha alterada com sucesso! Faça login.');
+    setTimeout(() => { window.history.replaceState({}, '', window.location.pathname); mostrarTela('tela-login'); }, 1500);
+  } catch {
+    errEl.textContent = 'Erro ao redefinir senha. Tente novamente.';
+    errEl.classList.remove('hidden');
+  }
+}
+
+function toggleSenhaVis(inputId, btn) {
+  const inp = document.getElementById(inputId);
+  inp.type  = inp.type === 'password' ? 'text' : 'password';
+  btn.textContent = inp.type === 'password' ? '👁' : '🙈';
+}
+
+function mostrarTela(id) {
+  ['tela-login','tela-esqueceu','tela-reset','tela-setup','tela-painel'].forEach(t => {
+    const el = document.getElementById(t);
+    if (el) { el.classList.add('hidden'); el.classList.remove('fade-in'); }
+  });
+  const el = document.getElementById(id);
+  if (el) {
+    el.classList.remove('hidden');
+    requestAnimationFrame(() => el.classList.add('fade-in'));
+  }
+}
+
+// ── SETUP ──
+async function carregarCodigoSetup() {
+  try {
+    const res  = await fetch('Code.gs');
+    const text = await res.text();
+    document.getElementById('code-preview').textContent = text;
+  } catch {
+    document.getElementById('code-preview').textContent = '// Abra o arquivo Code.gs da pasta EVENTA e cole aqui.';
+  }
+}
+
+async function copiarCodigo() {
+  const text = document.getElementById('code-preview').textContent;
+  await navigator.clipboard.writeText(text);
+  document.getElementById('btn-copiar-txt').textContent = '✓ Copiado!';
+  setTimeout(() => document.getElementById('btn-copiar-txt').textContent = 'Copiar Código', 2000);
+}
+
+async function salvarScriptUrl() {
+  const url  = document.getElementById('inp-script-url').value.trim();
+  const errEl = document.getElementById('erro-url');
+  if (!url || !url.includes('script.google.com') || !url.endsWith('/exec')) {
+    errEl.classList.remove('hidden'); return;
+  }
+  errEl.classList.add('hidden');
+  try {
+    const res = await fetch(url + '?action=ping');
+    const json = await res.json();
+    if (!json.ok) throw new Error();
+    S.scriptUrl = url;
+    localStorage.setItem('eventa_script_url', url);
+    // Se tinha login pendente, autenticar agora
+    if (S.pendingLogin) {
+      const { email, senha } = S.pendingLogin;
+      S.pendingLogin = null;
+      const loginRes = await apiPost({ action: 'login', email, senha });
+      if (loginRes.ok) {
+        S.sessionToken = loginRes.token;
+        S.nomeAdmin    = loginRes.nome;
+        localStorage.setItem('eventa_session', JSON.stringify({ token: loginRes.token, nome: loginRes.nome }));
+      }
+    }
+    mostrarTela('tela-painel');
+    carregarTudo();
+    toast('Conectado com sucesso! ✦');
+  } catch {
+    errEl.textContent = 'Não foi possível conectar. Verifique a URL e o deploy.';
+    errEl.classList.remove('hidden');
+  }
+}
+
+// ── CARREGAMENTO ──
+async function carregarTudo() {
+  await carregarConfig();
+  await carregarStats();
+  // Auto-refresh a cada 60s
+  setInterval(carregarStats, 60000);
+}
+
+async function carregarConfig() {
+  try {
+    const res = await api('getConfig');
+    S.config  = res;
+    preencherFormularios(res);
+  } catch {}
+}
+
+function preencherFormularios(c) {
+  if (!c) return;
+  set('ev-titulo',       c.titulo        || '');
+  set('ev-subtitulo',    c.subtitulo     || '');
+  set('ev-data',         c.data_evento   || '');
+  set('ev-codigo',       c.codigo_evento || '');
+  set('ev-mensagem',     c.mensagem      || '');
+  set('ev-agradecimento',c.msg_agradecimento || '');
+  set('gmail-dest',      c.gmail_dest    || '');
+  set('noivo-ddd',       c.noivo_ddd     || '');
+  set('noivo-tel',       c.noivo_tel     || '');
+  set('noiva-ddd',       c.noiva_ddd     || '');
+  set('noiva-tel',       c.noiva_tel     || '');
+
+  if (c.cor_accent) { set('cor-accent', c.cor_accent); set('cor-accent-hex', c.cor_accent); }
+  if (c.cor_bg)     { set('cor-bg',     c.cor_bg);     set('cor-bg-hex',     c.cor_bg); }
+
+  if (c.gmail_ativo === 'true') {
+    document.getElementById('toggle-gmail').classList.add('on');
+    document.getElementById('gmail-config').classList.remove('hidden');
+  }
+  if (c.whatsapp_ativo === 'true') {
+    document.getElementById('toggle-wpp').classList.add('on');
+    document.getElementById('wpp-config').classList.remove('hidden');
+  }
+
+  document.getElementById('info-codigo').textContent = c.codigo_evento || '—';
+  document.getElementById('dash-evento-nome').textContent = c.titulo || 'Evento sem título';
+}
+
+async function carregarStats() {
+  try {
+    const s = await api('getStats');
+    document.getElementById('stat-fotos').textContent  = s.fotos  ?? '0';
+    document.getElementById('stat-videos').textContent = s.videos ?? '0';
+    document.getElementById('stat-conv').textContent   = s.convidados ?? '0';
+    document.getElementById('stat-total').textContent  = s.total  ?? '0';
+
+    // Status
+    const badge = document.getElementById('status-badge');
+    const ativo = S.config.ativo !== 'false';
+    badge.textContent = ativo ? 'Ativo ●' : 'Encerrado';
+    badge.style.background = ativo ? '#F0FFF4' : '#FFF1F0';
+    badge.style.color      = ativo ? '#30D158' : '#FF3B30';
+
+    // Encerramento
+    const fim = S.config.duracao_fim;
+    if (fim) {
+      const d = new Date(fim);
+      document.getElementById('info-encerra').textContent = d.toLocaleDateString('pt-BR', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+    } else {
+      document.getElementById('info-encerra').textContent = 'Manual';
+    }
+
+    // Recentes
+    if (s.recentes && s.recentes.length) {
+      document.getElementById('lista-recentes').innerHTML = s.recentes.map(r => `
+        <div class="tbl-row">
+          <span class="font-medium truncate" style="color:var(--text)">${r.nome || '—'}</span>
+          <span class="px-2 py-1 rounded-full text-center" style="background:${r.tipo==='Video'?'#FDF4FF':'#EFF6FF'};color:${r.tipo==='Video'?'#9333EA':'#2563EB'};font-size:10px;font-weight:600">${r.tipo}</span>
+          <span style="color:var(--muted);font-size:11px">${r.tamanho}MB</span>
+          <span style="color:var(--muted);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.arquivo}</span>
+        </div>`).join('');
+    }
+  } catch {}
+}
+
+// ── SALVAR EVENTO ──
+async function salvarEvento() {
+  const titulo  = val('ev-titulo');
+  const codigo  = val('ev-codigo').toUpperCase();
+  const errEl   = document.getElementById('erro-evento');
+  if (!titulo || !codigo) {
+    errEl.textContent = 'Título e código são obrigatórios.';
+    errEl.classList.remove('hidden'); return;
+  }
+  errEl.classList.add('hidden');
+
+  let durFim = '';
+  const durSel = val('ev-duracao');
+  if (durSel === 'custom') {
+    durFim = val('ev-data-fim');
+  } else if (durSel) {
+    const d = new Date();
+    d.setHours(d.getHours() + parseInt(durSel));
+    durFim = d.toISOString();
+  }
+
+  const data = {
+    titulo:           titulo,
+    subtitulo:        val('ev-subtitulo'),
+    data_evento:      val('ev-data'),
+    mensagem:         val('ev-mensagem'),
+    codigo_evento:    codigo,
+    msg_agradecimento:val('ev-agradecimento') || 'Muito obrigado pelas memórias! 💛',
+    duracao_horas:    durSel || '',
+    duracao_fim:      durFim,
+    gmail_ativo:      document.getElementById('toggle-gmail').classList.contains('on').toString(),
+    gmail_dest:       val('gmail-dest'),
+    whatsapp_ativo:   document.getElementById('toggle-wpp').classList.contains('on').toString(),
+    noivo_ddd:        val('noivo-ddd'),
+    noivo_tel:        val('noivo-tel'),
+    noiva_ddd:        val('noiva-ddd'),
+    noiva_tel:        val('noiva-tel'),
+    tema:             S.temaAtual.tema || 'classico',
+    cor_accent:       val('cor-accent-hex') || '#B8975A',
+    cor_bg:           val('cor-bg-hex')     || '#F9F8F6'
+  };
+
+  try {
+    await apiPost({ action: 'saveConfig', ...data });
+    S.config = { ...S.config, ...data };
+    document.getElementById('info-codigo').textContent = codigo;
+    document.getElementById('dash-evento-nome').textContent = titulo;
+    toast('Evento salvo com sucesso ✦');
+  } catch { toast('Erro ao salvar. Tente novamente.'); }
+}
+
+// ── SALVAR DESIGN ──
+async function salvarDesign() {
+  const accent = val('cor-accent-hex') || '#B8975A';
+  const bg     = val('cor-bg-hex')     || '#F9F8F6';
+  try {
+    await apiPost({ action: 'saveConfig', ...S.config, cor_accent: accent, cor_bg: bg });
+    S.config.cor_accent = accent; S.config.cor_bg = bg;
+    toast('Design salvo ✦');
+  } catch { toast('Erro ao salvar design.'); }
+}
+
+// ── SALVAR CONEXÕES ──
+async function salvarConexoes() {
+  const data = {
+    ...S.config,
+    gmail_ativo:     document.getElementById('toggle-gmail').classList.contains('on').toString(),
+    gmail_dest:      val('gmail-dest'),
+    whatsapp_ativo:  document.getElementById('toggle-wpp').classList.contains('on').toString(),
+    noivo_ddd:       val('noivo-ddd'),
+    noivo_tel:       val('noivo-tel'),
+    noiva_ddd:       val('noiva-ddd'),
+    noiva_tel:       val('noiva-tel'),
+  };
+  try {
+    await apiPost({ action: 'saveConfig', ...data });
+    Object.assign(S.config, data);
+    toast('Conexões salvas ✦');
+  } catch { toast('Erro ao salvar. Tente novamente.'); }
+}
+
+// ── QR CODE ──
+function gerarQR() {
+  const githubUrl = val('qr-github-url').replace(/\/$/, '');
+  const codigo    = S.config.codigo_evento || '';
+  const scriptUrl = S.scriptUrl;
+
+  if (!githubUrl) { toast('Informe a URL do GitHub Pages'); return; }
+  if (!codigo)    { toast('Configure o código do evento primeiro'); return; }
+
+  const accent = encodeURIComponent(S.config.cor_accent || '#B8975A');
+  const bg     = encodeURIComponent(S.config.cor_bg     || '#F9F8F6');
+  const link   = `${githubUrl}/?api=${encodeURIComponent(scriptUrl)}&ev=${codigo}&accent=${accent}&bg=${bg}`;
+
+  S.qrUrl = link;
+  document.getElementById('link-direto').value = link;
+  document.getElementById('qr-codigo-label').textContent = codigo;
+
+  const container = document.getElementById('qr-canvas');
+  container.innerHTML = '';
+  QRCode.toCanvas(container, link, {
+    width: 200,
+    margin: 2,
+    color: { dark: '#1C1C1E', light: '#FFFFFF' }
+  }, err => {
+    if (err) { toast('Erro ao gerar QR Code'); return; }
+    const canvas = container.querySelector('canvas');
+    if (canvas) canvas.style.borderRadius = '12px';
+  });
+
+  document.getElementById('qr-placeholder').classList.add('hidden');
+  document.getElementById('qr-container').classList.remove('hidden');
+  document.getElementById('qr-container').classList.add('flex');
+}
+
+function downloadQR(fmt) {
+  const canvas = document.querySelector('#qr-canvas canvas');
+  if (!canvas) { toast('Gere o QR Code primeiro'); return; }
+  const link = document.createElement('a');
+  link.download = `EVENTA_QR_${S.config.codigo_evento || 'evento'}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+async function copiarLink() {
+  const link = document.getElementById('link-direto').value;
+  if (!link) { toast('Gere o QR Code primeiro'); return; }
+  await navigator.clipboard.writeText(link);
+  toast('Link copiado! ✦');
+}
+
+// ── TOGGLES ──
+function toggleGmail() {
+  const t = document.getElementById('toggle-gmail');
+  t.classList.toggle('on');
+  document.getElementById('gmail-config').classList.toggle('hidden', !t.classList.contains('on'));
+}
+function toggleWhatsapp() {
+  const t = document.getElementById('toggle-wpp');
+  t.classList.toggle('on');
+  document.getElementById('wpp-config').classList.toggle('hidden', !t.classList.contains('on'));
+}
+
+// ── TEMAS ──
+function selecionarTema(el, accent, bg) {
+  document.querySelectorAll('.tema-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  S.temaAtual = { tema: el.dataset.tema, accent, bg };
+  set('cor-accent', accent); set('cor-accent-hex', accent);
+  set('cor-bg',     bg);     set('cor-bg-hex',     bg);
+}
+
+// ── DURAÇÃO ──
+function onDuracaoChange() {
+  const sel = val('ev-duracao');
+  document.getElementById('wrap-data-fim').classList.toggle('hidden', sel !== 'custom');
+}
+
+// ── NAVEGAÇÃO ──
+function navegarPara(sec) {
+  ['dashboard','evento','design','conexoes','qrcode'].forEach(s => {
+    document.getElementById('sec-' + s).classList.add('hidden');
+  });
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const section = document.getElementById('sec-' + sec);
+  section.classList.remove('hidden');
+  section.classList.remove('fade-in');
+  requestAnimationFrame(() => section.classList.add('fade-in'));
+  const navEl = document.querySelector(`[onclick="navegarPara('${sec}')"]`);
+  if (navEl) navEl.classList.add('active');
+}
+
+function desconectar() {
+  if (!confirm('Sair do painel?')) return;
+  try { apiPost({ action: 'logout', token: S.sessionToken }); } catch {}
+  localStorage.removeItem('eventa_session');
+  S.sessionToken = '';
+  mostrarTela('tela-login');
+}
+
+// ── API ──
+async function api(action, params = {}) {
+  const url = new URL(S.scriptUrl);
+  url.searchParams.set('action', action);
+  if (S.sessionToken) url.searchParams.set('token', S.sessionToken);
+  Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
+  const res  = await fetch(url.toString());
+  const json = await res.json();
+  if (json.error === 'Sessão inválida. Faça login novamente.') {
+    localStorage.removeItem('eventa_session');
+    mostrarTela('tela-login');
+    throw new Error('Sessão expirada');
+  }
+  return json;
+}
+
+async function apiPost(data) {
+  if (S.sessionToken && !data.token) data.token = S.sessionToken;
+  const res  = await fetch(S.scriptUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(data)
+  });
+  const json = await res.json();
+  if (json.error === 'Sessão inválida. Faça login novamente.') {
+    localStorage.removeItem('eventa_session');
+    mostrarTela('tela-login');
+    throw new Error('Sessão expirada');
+  }
+  return json;
+}
+
+// ── UTILITÁRIOS ──
+function val(id) { const el = document.getElementById(id); return el ? el.value : ''; }
+function set(id, v) { const el = document.getElementById(id); if (el) el.value = v; }
+
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.add('hidden'), 3000);
+}
+</script>
+</body>
+</html>
