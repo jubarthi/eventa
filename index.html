@@ -700,9 +700,13 @@ function lerArquivoBase64(file) {
 function formatarData(str) {
   if (!str) return '';
   try {
-    const d = new Date(str + 'T12:00:00');
+    // Se for só YYYY-MM-DD adiciona horário; caso contrário usa direto (já vem como ISO do Sheets)
+    const d = (typeof str === 'string' && str.length === 10)
+      ? new Date(str + 'T12:00:00')
+      : new Date(str);
+    if (isNaN(d.getTime())) return '';
     return d.toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
-  } catch { return str; }
+  } catch(e) { return ''; }
 }
 
 function hexToRgba(hex, alpha) {
