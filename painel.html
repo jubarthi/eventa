@@ -1245,7 +1245,7 @@ async function gerarQR() {
 
 async function carregarLinks() {
   try {
-    const res = await apiGet('getLinks');
+    const res = await api('getLinks');
     const container = document.getElementById('lista-links');
     if (!res.links || !res.links.length) {
       container.innerHTML = '<p class="text-xs text-center py-4" style="color:var(--muted)">Nenhuma chave gerada ainda</p>';
