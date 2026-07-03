@@ -779,6 +779,17 @@
             <button class="btn btn-ghost text-xs" onclick="copiarLink()">Copiar</button>
           </div>
         </div>
+
+        <!-- Chaves Ativas -->
+        <div class="card p-5 mt-4">
+          <div class="flex items-center justify-between mb-4">
+            <p class="font-semibold text-sm">Chaves Ativas</p>
+            <button class="btn btn-ghost text-xs py-1 px-3" onclick="carregarLinks()">↻ Atualizar</button>
+          </div>
+          <div id="lista-links">
+            <p class="text-xs text-center py-4" style="color:var(--muted)">Nenhuma chave gerada ainda</p>
+          </div>
+        </div>
       </section>
 
     </main>
@@ -1026,6 +1037,7 @@ async function salvarScriptUrl() {
 async function carregarTudo() {
   await carregarConfig();
   await carregarStats();
+  await carregarLinks();
   // Auto-refresh a cada 60s
   setInterval(carregarStats, 60000);
 }
@@ -1055,11 +1067,11 @@ function preencherFormularios(c) {
   if (c.cor_accent) { set('cor-accent', c.cor_accent); set('cor-accent-hex', c.cor_accent); }
   if (c.cor_bg)     { set('cor-bg',     c.cor_bg);     set('cor-bg-hex',     c.cor_bg); }
 
-  if (c.gmail_ativo === 'true') {
+  if (String(c.gmail_ativo) === 'true') {
     document.getElementById('toggle-gmail').classList.add('on');
     document.getElementById('gmail-config').classList.remove('hidden');
   }
-  if (c.whatsapp_ativo === 'true') {
+  if (String(c.whatsapp_ativo) === 'true') {
     document.getElementById('toggle-wpp').classList.add('on');
     document.getElementById('wpp-config').classList.remove('hidden');
   }
@@ -1187,7 +1199,7 @@ async function salvarConexoes() {
 }
 
 // ── QR CODE ──
-function gerarQR() {
+async function gerarQR() {
   const githubUrl = val('qr-github-url').replace(/\/$/, '');
   const codigo    = S.config.codigo_evento || '';
   const scriptUrl = S.scriptUrl;
@@ -1218,6 +1230,66 @@ function gerarQR() {
   document.getElementById('qr-placeholder').classList.add('hidden');
   document.getElementById('qr-container').classList.remove('hidden');
   document.getElementById('qr-container').classList.add('flex');
+
+  // Salvar link permanentemente no servidor
+  try {
+    await api('saveLink', {
+      codigo,
+      nome:  S.config.titulo || codigo,
+      link,
+      expiry: ''
+    });
+    carregarLinks();
+  } catch(e) {}
+}
+
+async function carregarLinks() {
+  try {
+    const res = await apiGet('getLinks');
+    const container = document.getElementById('lista-links');
+    if (!res.links || !res.links.length) {
+      container.innerHTML = '<p class="text-xs text-center py-4" style="color:var(--muted)">Nenhuma chave gerada ainda</p>';
+      return;
+    }
+    container.innerHTML = res.links.map(l => {
+      const exp = l.expiry ? `<span class="text-xs" style="color:var(--muted)">Expira: ${new Date(l.expiry).toLocaleDateString('pt-BR')}</span>` : '<span class="text-xs" style="color:#34C759">Sem expiração</span>';
+      return `
+      <div class="rounded-2xl p-4 mb-3" style="background:var(--surface-2);border:1px solid var(--border)">
+        <div class="flex items-start justify-between gap-3 mb-2">
+          <div>
+            <p class="text-xs font-semibold" style="color:var(--accent)">CHAVE ATIVA</p>
+            <p class="text-sm font-medium">${l.nome}</p>
+            <p class="text-xs font-mono tracking-widest" style="color:var(--muted)">${l.codigo}</p>
+          </div>
+          <button onclick="excluirLink('${l.id}')" class="btn btn-danger text-xs py-1 px-3" style="flex-shrink:0">Excluir</button>
+        </div>
+        <div class="flex items-center gap-2 mb-2">
+          <input class="inp text-xs flex-1" style="font-size:11px;color:var(--muted)" value="${l.link}" readonly />
+          <button onclick="navigator.clipboard.writeText('${l.link}').then(()=>toast('Link copiado!'))" class="btn btn-ghost text-xs py-1 px-3" style="flex-shrink:0">Copiar</button>
+        </div>
+        <div class="flex items-center gap-3">
+          ${exp}
+          <button onclick="definirExpiracao('${l.id}', '${l.link}', '${l.codigo}', '${l.nome}')" class="text-xs" style="color:var(--accent)">Definir expiração</button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {}
+}
+
+async function excluirLink(id) {
+  if (!confirm('Excluir esta chave? O QR Code deixará de funcionar.')) return;
+  await api('deleteLink', { id });
+  carregarLinks();
+  toast('Chave excluída');
+}
+
+async function definirExpiracao(id, link, codigo, nome) {
+  const data = prompt('Data de expiração (AAAA-MM-DD):\nEx: 2026-07-05');
+  if (!data) return;
+  const expiry = new Date(data + 'T23:59:59').toISOString();
+  await api('saveLink', { id, link, codigo, nome, expiry });
+  carregarLinks();
+  toast('Expiração definida');
 }
 
 function downloadQR(fmt) {
