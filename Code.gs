@@ -36,6 +36,7 @@ function doGet(e) {
       // Protegidas (painel)
       case 'getStats':  return respondAuth(e, () => getStats());
       case 'getConfig': return respondAuth(e, () => getConfig());
+      case 'getLinks':  return respondAuth(e, () => getLinks());
 
       default: return respond({ error: 'Ação inválida' });
     }
@@ -64,7 +65,9 @@ function doPost(e) {
       case 'redefinirSenha': return respond(redefinirSenha(data));
 
       // Protegidas (painel)
-      case 'saveConfig': return respondAuthPost(data, () => saveConfig(data));
+      case 'saveConfig':  return respondAuthPost(data, () => saveConfig(data));
+      case 'saveLink':    return respondAuthPost(data, () => saveLink(data));
+      case 'deleteLink':  return respondAuthPost(data, () => deleteLink(data));
 
       default: return respond({ error: 'Ação inválida' });
     }
@@ -277,7 +280,7 @@ function getEvent(code) {
   if (cfg.codigo_evento.toString().toUpperCase() !== (code || '').toUpperCase()) {
     return { error: 'Código inválido' };
   }
-  if (cfg.ativo !== 'true') return { error: 'Evento encerrado' };
+  if (String(cfg.ativo) !== 'true') return { error: 'Evento encerrado' };
 
   if (cfg.duracao_fim) {
     if (new Date() > new Date(cfg.duracao_fim)) {
@@ -290,7 +293,7 @@ function getEvent(code) {
     ok:               true,
     titulo:           cfg.titulo            || '',
     subtitulo:        cfg.subtitulo         || '',
-    data_evento:      cfg.data_evento       || '',
+    data_evento:      cfg.data_evento instanceof Date ? Utilities.formatDate(cfg.data_evento, Session.getScriptTimeZone(), 'yyyy-MM-dd') : String(cfg.data_evento || ''),
     mensagem:         cfg.mensagem          || '',
     msg_agradecimento:cfg.msg_agradecimento || '',
     whatsapp_ativo:   cfg.whatsapp_ativo    || 'false',
@@ -323,7 +326,7 @@ function uploadFile(data) {
   if (!cfg.codigo_evento || cfg.codigo_evento.toString().toUpperCase() !== (codigo || '').toUpperCase()) {
     return { error: 'Código inválido' };
   }
-  if (cfg.ativo !== 'true') return { error: 'Evento encerrado' };
+  if (String(cfg.ativo) !== 'true') return { error: 'Evento encerrado' };
   if (parseFloat(fileSizeMB) > CONFIG.MAX_FILE_MB) return { error: 'Arquivo muito grande' };
 
   const folder  = getOrCreateEventFolder(cfg.codigo_evento);
@@ -439,4 +442,51 @@ function getOrCreateSheet(name) {
   let   sheet = ss.getSheetByName(name);
   if (!sheet) sheet = ss.insertSheet(name);
   return sheet;
+}
+
+// ─────────────────────────────────────────
+//  GERENCIAMENTO DE LINKS / CHAVES
+// ─────────────────────────────────────────
+
+function saveLink(data) {
+  const props = PropertiesService.getScriptProperties();
+  const links = JSON.parse(props.getProperty('eventa_links') || '[]');
+
+  // Remove link existente do mesmo evento (evita duplicata)
+  const filtrado = links.filter(l => l.codigo !== data.codigo);
+
+  filtrado.unshift({
+    id:        Utilities.getUuid(),
+    codigo:    data.codigo    || '',
+    nome:      data.nome      || '',
+    link:      data.link      || '',
+    expiry:    data.expiry    || '',
+    criado_em: new Date().toISOString()
+  });
+
+  props.setProperty('eventa_links', JSON.stringify(filtrado));
+  return { ok: true };
+}
+
+function getLinks() {
+  const props = PropertiesService.getScriptProperties();
+  const links = JSON.parse(props.getProperty('eventa_links') || '[]');
+
+  // Remove links expirados automaticamente
+  const agora   = new Date();
+  const ativos  = links.filter(l => !l.expiry || new Date(l.expiry) > agora);
+
+  if (ativos.length !== links.length) {
+    props.setProperty('eventa_links', JSON.stringify(ativos));
+  }
+
+  return { ok: true, links: ativos };
+}
+
+function deleteLink(data) {
+  const props  = PropertiesService.getScriptProperties();
+  const links  = JSON.parse(props.getProperty('eventa_links') || '[]');
+  const novos  = links.filter(l => l.id !== data.id);
+  props.setProperty('eventa_links', JSON.stringify(novos));
+  return { ok: true };
 }
