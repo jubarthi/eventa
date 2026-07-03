@@ -623,6 +623,19 @@ async function enviarTudo() {
 
   atualizarProgresso(total, total, 'Concluído!');
 
+  // Dispara email de aviso ao organizador
+  try {
+    await chamarAPIPost({
+      action:    'finalizarEnvio',
+      nome,
+      sobrenome,
+      ddd,
+      telefone:  tel,
+      fotos:     fotosEnv,
+      videos:    videosEnv
+    });
+  } catch(e) {}
+
   setTimeout(() => mostrarSucesso(fotosEnv, videosEnv, enviados), 600);
 }
 
