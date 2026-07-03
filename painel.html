@@ -1054,7 +1054,7 @@ function preencherFormularios(c) {
   if (!c) return;
   set('ev-titulo',       c.titulo        || '');
   set('ev-subtitulo',    c.subtitulo     || '');
-  set('ev-data',         c.data_evento   || '');
+  set('ev-data', (() => { const m = String(c.data_evento || '').match(/(\d{4}-\d{2}-\d{2})/); return m ? m[1] : ''; })());
   set('ev-codigo',       c.codigo_evento || '');
   set('ev-mensagem',     c.mensagem      || '');
   set('ev-agradecimento',c.msg_agradecimento || '');
