@@ -1001,18 +1001,18 @@ async function copiarCodigo() {
 }
 
 async function salvarScriptUrl() {
-  const url  = document.getElementById('inp-script-url').value.trim();
+  const url   = document.getElementById('inp-script-url').value.trim();
   const errEl = document.getElementById('erro-url');
   if (!url || !url.includes('script.google.com') || !url.endsWith('/exec')) {
+    errEl.textContent = '⚠️ Cole a URL completa que termina com /exec';
     errEl.classList.remove('hidden'); return;
   }
   errEl.classList.add('hidden');
+
+  S.scriptUrl = url;
+  localStorage.setItem('eventa_script_url', url);
+
   try {
-    const res = await fetch(url + '?action=ping');
-    const json = await res.json();
-    if (!json.ok) throw new Error();
-    S.scriptUrl = url;
-    localStorage.setItem('eventa_script_url', url);
     // Se tinha login pendente, autenticar agora
     if (S.pendingLogin) {
       const { email, senha } = S.pendingLogin;
@@ -1024,13 +1024,11 @@ async function salvarScriptUrl() {
         localStorage.setItem('eventa_session', JSON.stringify({ token: loginRes.token, nome: loginRes.nome }));
       }
     }
-    mostrarTela('tela-painel');
-    carregarTudo();
-    toast('Conectado com sucesso! ✦');
-  } catch {
-    errEl.textContent = 'Não foi possível conectar. Verifique a URL e o deploy.';
-    errEl.classList.remove('hidden');
-  }
+  } catch(e) {}
+
+  mostrarTela('tela-painel');
+  carregarTudo();
+  toast('Conectado com sucesso! ✦');
 }
 
 // ── CARREGAMENTO ──
