@@ -476,42 +476,6 @@ function getStats() {
 
   return { fotos: 0, videos: 0, convidados: 0, total: 0, recentes: [] };
 }
-  sheet.appendRow([
-    new Date(), nome||'', sobrenome||'', ddd||'', telefone||'',
-    mensagem||'', tipo, fileName, fileSizeMB, file.getUrl()
-  ]);
-
-  return { ok: true, tipo, fileId: file.getId() };
-}
-
-// ─────────────────────────────────────────
-//  ESTATÍSTICAS
-// ─────────────────────────────────────────
-
-function getStats() {
-  const sheet = getOrCreateSheet(CONFIG.SHEET_REGISTROS);
-  const rows  = sheet.getLastRow();
-
-  if (rows <= 1) return { fotos: 0, videos: 0, convidados: 0, total: 0, recentes: [] };
-
-  const data     = sheet.getRange(2, 1, rows - 1, 10).getValues();
-  let fotos      = 0, videos = 0;
-  const nomes    = new Set();
-  const recentes = [];
-
-  data.forEach(row => {
-    if (!row[0]) return;
-    const tipo = (row[6] || '').toString();
-    if (tipo === 'Foto')  fotos++;
-    if (tipo === 'Video') videos++;
-    const nome = ((row[1]||'') + ' ' + (row[2]||'')).trim();
-    if (nome) nomes.add(nome);
-    recentes.push({ ts: row[0] ? new Date(row[0]).toISOString() : '', nome, tipo, arquivo: row[7]||'', tamanho: row[8]||'' });
-  });
-
-  recentes.sort((a, b) => new Date(b.ts) - new Date(a.ts));
-  return { fotos, videos, convidados: nomes.size, total: fotos + videos, recentes: recentes.slice(0, 10) };
-}
 
 // ─────────────────────────────────────────
 //  GMAIL
