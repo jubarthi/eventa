@@ -35,19 +35,20 @@ const ADMIN_DEFAULT = ADMIN_USERS[0];
 
 function doGet(e) {
   inicializarAdmin();
-  const action = e.parameter.action || '';
+  const params = (e && e.parameter) ? e.parameter : {};
+  const action = params.action || '';
   try {
     switch (action) {
       // Públicas (convidado)
-      case 'getEvent': return respond(getEvent(e.parameter.code));
+      case 'getEvent': return respond(getEvent(params.code));
       case 'ping':     return respond({ ok: true, ts: new Date().toISOString() });
 
       // Protegidas (painel)
-      case 'getStats':  return respondAuth(e, () => getStats());
-      case 'getConfig': return respondAuth(e, () => getConfig());
-      case 'getLinks':  return respondAuth(e, () => getLinks());
+      case 'getStats':  return respondAuth(e || { parameter: {} }, () => getStats());
+      case 'getConfig': return respondAuth(e || { parameter: {} }, () => getConfig());
+      case 'getLinks':  return respondAuth(e || { parameter: {} }, () => getLinks());
 
-      default: return respond({ error: 'Ação inválida' });
+      default: return respond({ ok: true, msg: 'EVENTA API Online' });
     }
   } catch (err) {
     return respond({ error: err.message });
@@ -61,7 +62,7 @@ function doGet(e) {
 function doPost(e) {
   inicializarAdmin();
   try {
-    const data   = JSON.parse(e.postData.contents);
+    const data   = (e && e.postData && e.postData.contents) ? JSON.parse(e.postData.contents) : {};
     const action = data.action || '';
     switch (action) {
       // Públicas (convidado)
@@ -281,71 +282,59 @@ function hashSenha(senha) {
 // ─────────────────────────────────────────
 
 function saveConfig(data) {
-  const sheet = getOrCreateSheet(CONFIG.SHEET_CONFIG);
-  sheet.clearContents();
+  const props = PropertiesService.getScriptProperties();
+  props.setProperty('eventa_config', JSON.stringify(data));
 
-  const campos = [
-    ['titulo',            data.titulo            || ''],
-    ['subtitulo',         data.subtitulo          || ''],
-    ['data_evento',       data.data_evento        || ''],
-    ['mensagem',          data.mensagem           || ''],
-    ['codigo_evento',     data.codigo_evento      || ''],
-    ['msg_agradecimento', data.msg_agradecimento  || 'Muito obrigado pelas memórias! 💛'],
-    ['duracao_horas',     data.duracao_horas      || ''],
-    ['duracao_fim',       data.duracao_fim        || ''],
-    ['gmail_ativo',       data.gmail_ativo        || 'false'],
-    ['gmail_dest',        data.gmail_dest         || ''],
-    ['whatsapp_ativo',    data.whatsapp_ativo     || 'false'],
-    ['noivo_ddd',         data.noivo_ddd          || ''],
-    ['noivo_tel',         data.noivo_tel          || ''],
-    ['noiva_ddd',         data.noiva_ddd          || ''],
-    ['noiva_tel',         data.noiva_tel          || ''],
-    ['tema',              data.tema               || 'classico'],
-    ['cor_accent',        data.cor_accent         || '#B8975A'],
-    ['cor_bg',            data.cor_bg             || '#F9F8F6'],
-    ['ativo',             'true'],
-    ['criado_em',         new Date().toISOString()]
-  ];
+  // Tenta sincronizar com a planilha de forma segura (se houver permissão)
+  try {
+    const sheet = getOrCreateSheet(CONFIG.SHEET_CONFIG);
+    sheet.clearContents();
+    const campos = [
+      ['titulo',            data.titulo            || ''],
+      ['subtitulo',         data.subtitulo          || ''],
+      ['data_evento',       data.data_evento        || ''],
+      ['mensagem',          data.mensagem           || ''],
+      ['codigo_evento',     data.codigo_evento      || ''],
+      ['msg_agradecimento', data.msg_agradecimento  || 'Muito obrigado pelas memórias! 💛'],
+      ['duracao_horas',     data.duracao_horas      || ''],
+      ['duracao_fim',       data.duracao_fim        || ''],
+      ['gmail_ativo',       data.gmail_ativo        || 'false'],
+      ['gmail_dest',        data.gmail_dest         || ''],
+      ['whatsapp_ativo',    data.whatsapp_ativo     || 'false'],
+      ['noivo_ddd',         data.noivo_ddd          || ''],
+      ['noivo_tel',         data.noivo_tel          || ''],
+      ['noiva_ddd',         data.noiva_ddd          || ''],
+      ['noiva_tel',         data.noiva_tel          || ''],
+      ['tema',              data.tema               || 'classico'],
+      ['cor_accent',        data.cor_accent         || '#B8975A'],
+      ['cor_bg',            data.cor_bg             || '#F9F8F6'],
+      ['ativo',             'true'],
+      ['criado_em',         new Date().toISOString()]
+    ];
+    campos.forEach((par, i) => {
+      sheet.getRange(i + 1, 1).setValue(par[0]);
+      const cell = sheet.getRange(i + 1, 2);
+      if (par[0] === 'data_evento' || par[0] === 'duracao_fim' || par[0] === 'criado_em') cell.setNumberFormat('@');
+      cell.setValue(par[1]);
+    });
+  } catch(e) {}
 
-  campos.forEach((par, i) => {
-    sheet.getRange(i + 1, 1).setValue(par[0]);
-    const cell = sheet.getRange(i + 1, 2);
-    // Força texto nos campos de data para evitar conversão automática do Sheets
-    if (par[0] === 'data_evento' || par[0] === 'duracao_fim' || par[0] === 'criado_em') {
-      cell.setNumberFormat('@');
-    }
-    cell.setValue(par[1]);
-  });
-
-  getOrCreateEventFolder(data.codigo_evento);
+  try { getOrCreateEventFolder(data.codigo_evento); } catch(e) {}
   return { ok: true };
 }
 
 function getConfig() {
-  const sheet = getOrCreateSheet(CONFIG.SHEET_CONFIG);
-  const data  = sheet.getDataRange().getValues();
-  if (data.length <= 1 && (!data[0] || !data[0][0])) {
-    saveConfig(EVENTO_DEFAULT);
-    return EVENTO_DEFAULT;
+  const props = PropertiesService.getScriptProperties();
+  const raw   = props.getProperty('eventa_config');
+  if (raw) {
+    try {
+      const cfg = JSON.parse(raw);
+      if (cfg && cfg.codigo_evento) return cfg;
+    } catch(e) {}
   }
-  const cfg   = {};
-  const tz    = Session.getScriptTimeZone();
-  data.forEach(row => {
-    if (!row[0]) return;
-    let val = row[1];
-    if (val instanceof Date) {
-      // Campos de data: formata como YYYY-MM-DD ou ISO dependendo do campo
-      if (row[0] === 'data_evento') {
-        val = Utilities.formatDate(val, tz, 'yyyy-MM-dd');
-      } else if (row[0] === 'duracao_fim') {
-        val = Utilities.formatDate(val, tz, "yyyy-MM-dd'T'HH:mm");
-      } else {
-        val = Utilities.formatDate(val, tz, 'yyyy-MM-dd');
-      }
-    }
-    cfg[row[0]] = val;
-  });
-  return cfg;
+  // Se não existir, salva e retorna o padrão
+  props.setProperty('eventa_config', JSON.stringify(EVENTO_DEFAULT));
+  return EVENTO_DEFAULT;
 }
 
 // ─────────────────────────────────────────
@@ -372,7 +361,7 @@ function getEvent(code) {
     ok:               true,
     titulo:           cfg.titulo            || '',
     subtitulo:        cfg.subtitulo         || '',
-    data_evento:      cfg.data_evento instanceof Date ? Utilities.formatDate(cfg.data_evento, Session.getScriptTimeZone(), 'yyyy-MM-dd') : String(cfg.data_evento || ''),
+    data_evento:      String(cfg.data_evento || ''),
     mensagem:         cfg.mensagem          || '',
     msg_agradecimento:cfg.msg_agradecimento || '',
     whatsapp_ativo:   cfg.whatsapp_ativo    || 'false',
@@ -387,11 +376,18 @@ function getEvent(code) {
 }
 
 function encerrarEvento() {
-  const sheet = getOrCreateSheet(CONFIG.SHEET_CONFIG);
-  const data  = sheet.getDataRange().getValues();
-  data.forEach((row, i) => {
-    if (row[0] === 'ativo') sheet.getRange(i + 1, 2).setValue('false');
-  });
+  const props = PropertiesService.getScriptProperties();
+  const cfg   = getConfig();
+  cfg.ativo   = 'false';
+  props.setProperty('eventa_config', JSON.stringify(cfg));
+
+  try {
+    const sheet = getOrCreateSheet(CONFIG.SHEET_CONFIG);
+    const data  = sheet.getDataRange().getValues();
+    data.forEach((row, i) => {
+      if (row[0] === 'ativo') sheet.getRange(i + 1, 2).setValue('false');
+    });
+  } catch(e) {}
 }
 
 // ─────────────────────────────────────────
@@ -423,11 +419,63 @@ function uploadFile(data) {
 
   const tipo = mimeType.startsWith('video/') ? 'Video' : 'Foto';
 
-  const sheet = getOrCreateSheet(CONFIG.SHEET_REGISTROS);
-  if (sheet.getLastRow() === 0) {
-    sheet.appendRow(['Timestamp','Nome','Sobrenome','DDD','Telefone','Mensagem','Tipo','Arquivo','Tamanho (MB)','Link Drive']);
-    sheet.getRange(1, 1, 1, 10).setFontWeight('bold').setBackground('#F9F8F6');
-  }
+  // Grava stats em ScriptProperties (sempre disponível)
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const stats = JSON.parse(props.getProperty('eventa_stats') || '{"fotos":0,"videos":0,"convidados":[],"recentes":[]}');
+    if (tipo === 'Video') stats.videos++;
+    else stats.fotos++;
+    const nomeCompleto = ((nome||'') + ' ' + (sobrenome||'')).trim();
+    if (nomeCompleto && !stats.convidados.includes(nomeCompleto)) stats.convidados.push(nomeCompleto);
+    stats.recentes.unshift({
+      ts: new Date().toISOString(),
+      nome: nomeCompleto,
+      tipo: tipo,
+      arquivo: fileName,
+      tamanho: fileSizeMB
+    });
+    if (stats.recentes.length > 20) stats.recentes = stats.recentes.slice(0, 20);
+    props.setProperty('eventa_stats', JSON.stringify(stats));
+  } catch(e) {}
+
+  // Grava na planilha se disponível
+  try {
+    const sheet = getOrCreateSheet(CONFIG.SHEET_REGISTROS);
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow(['Timestamp','Nome','Sobrenome','DDD','Telefone','Mensagem','Tipo','Arquivo','Tamanho (MB)','Link Drive']);
+      sheet.getRange(1, 1, 1, 10).setFontWeight('bold').setBackground('#F9F8F6');
+    }
+    sheet.appendRow([
+      new Date(), nome||'', sobrenome||'', ddd||'', telefone||'',
+      mensagem||'', tipo, fileName, fileSizeMB, file.getUrl()
+    ]);
+  } catch(e) {}
+
+  return { ok: true, tipo, fileId: file.getId() };
+}
+
+// ─────────────────────────────────────────
+//  ESTATÍSTICAS
+// ─────────────────────────────────────────
+
+function getStats() {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const raw   = props.getProperty('eventa_stats');
+    if (raw) {
+      const s = JSON.parse(raw);
+      return {
+        fotos:      s.fotos || 0,
+        videos:     s.videos || 0,
+        convidados: (s.convidados || []).length,
+        total:      (s.fotos || 0) + (s.videos || 0),
+        recentes:   (s.recentes || []).slice(0, 10)
+      };
+    }
+  } catch(e) {}
+
+  return { fotos: 0, videos: 0, convidados: 0, total: 0, recentes: [] };
+}
   sheet.appendRow([
     new Date(), nome||'', sobrenome||'', ddd||'', telefone||'',
     mensagem||'', tipo, fileName, fileSizeMB, file.getUrl()
