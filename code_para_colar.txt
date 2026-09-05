@@ -15,7 +15,7 @@ const CONFIG = {
 // Credenciais padrão do administrador
 // (usadas apenas na primeira execução — depois ficam no Script Properties)
 const ADMIN_DEFAULT = {
-  email: 'thiago@jubarthi.com.br',
+  email: 'othiagoschwanz@gmail.com',
   senha: '@#TDSe2026*',
   nome:  'Thiago'
 };
@@ -597,7 +597,7 @@ function deleteLink(data) {
 // ─────────────────────────────────────────
 function testarEmail() {
   GmailApp.sendEmail(
-    'thiago@jubarthi.com.br',
+    'othiagoschwanz@gmail.com',
     'EVENTA — Teste de Email',
     'Se chegou, o Gmail está funcionando!'
   );
