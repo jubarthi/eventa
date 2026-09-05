@@ -4,7 +4,8 @@
 // ============================================================
 
 const CONFIG = {
-  FOLDER_NAME:     'EVENTA',
+  FOLDER_NAME:     'MARCELO_e_RAFA',
+  FOLDER_ID:       '1ulRjtioJRIcqCmfjkbcG779jQ_LvZsVz',
   SHEET_REGISTROS: 'Registros',
   SHEET_CONFIG:    'Configuracao',
   MAX_FILE_MB:     20,
@@ -536,13 +537,24 @@ function finalizarEnvio(data) {
 // ─────────────────────────────────────────
 
 function getOrCreateRootFolder() {
+  if (CONFIG.FOLDER_ID) {
+    try {
+      return DriveApp.getFolderById(CONFIG.FOLDER_ID);
+    } catch(e) {
+      Logger.log('Aviso: pasta por ID não encontrada, usando busca por nome.');
+    }
+  }
   const folders = DriveApp.getFoldersByName(CONFIG.FOLDER_NAME);
   if (folders.hasNext()) return folders.next();
   return DriveApp.createFolder(CONFIG.FOLDER_NAME);
 }
 
 function getOrCreateEventFolder(codigo) {
-  const root   = getOrCreateRootFolder();
+  const root = getOrCreateRootFolder();
+  // Se já apontamos diretamente para a pasta MARCELO_e_RAFA, grava tudo direto nela!
+  if (CONFIG.FOLDER_ID) {
+    return root;
+  }
   const name   = 'Evento_' + (codigo || 'SEM_CODIGO').toUpperCase();
   const exists = root.getFoldersByName(name);
   if (exists.hasNext()) return exists.next();
