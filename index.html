@@ -422,14 +422,17 @@ window.addEventListener('DOMContentLoaded', () => {
   // URL param tem prioridade; se não, usa localStorage ou o padrão da aplicação
   if (api) {
     STATE.scriptUrl = decodeURIComponent(api);
+    try { localStorage.setItem('eventa_script_url', STATE.scriptUrl); } catch(e) {}
   } else {
     const saved = localStorage.getItem('eventa_script_url');
-    if (saved) STATE.scriptUrl = saved;
+    STATE.scriptUrl = (saved && saved.startsWith('http')) ? saved : DEFAULT_API_URL;
   }
+
+  if (!STATE.scriptUrl) STATE.scriptUrl = DEFAULT_API_URL;
 
   if (ev)  {
     document.getElementById('inp-codigo').value = ev.toUpperCase();
-    if (STATE.scriptUrl) setTimeout(verificarCodigo, 400);
+    setTimeout(verificarCodigo, 300);
   }
 
   // Aplicar tema do URL se houver
@@ -451,7 +454,11 @@ async function verificarCodigo() {
   const btn    = document.getElementById('btn-codigo');
 
   if (!codigo) { errEl.textContent = 'Digite o código do evento.'; errEl.classList.remove('hidden'); return; }
-  if (!STATE.scriptUrl) { errEl.textContent = 'URL do script não configurada. Use o QR Code do evento.'; errEl.classList.remove('hidden'); return; }
+  
+  // Garantir URL do script sempre preenchida
+  if (!STATE.scriptUrl || !STATE.scriptUrl.startsWith('http')) {
+    STATE.scriptUrl = DEFAULT_API_URL;
+  }
 
   btn.innerHTML = '<div class="spinner mx-auto"></div>';
   btn.disabled  = true;
