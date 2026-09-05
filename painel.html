@@ -745,9 +745,9 @@
           <div class="card p-6">
             <p class="font-semibold text-sm mb-4">Configurar Link</p>
             <div class="mb-4">
-              <label class="lbl">URL do GitHub Pages *</label>
-              <input id="qr-github-url" class="inp" type="url" placeholder="https://seunome.github.io/eventa/" />
-              <p class="text-xs mt-1.5" style="color:var(--muted)">A URL onde você hospedou o index.html</p>
+              <label class="lbl">URL do Site (Vercel ou Domínio) *</label>
+              <input id="qr-github-url" class="inp" type="url" placeholder="https://eventa-three.vercel.app" />
+              <p class="text-xs mt-1.5" style="color:var(--muted)">Preenchido automaticamente com o endereço do seu site</p>
             </div>
             <button class="btn btn-gold w-full justify-center" onclick="gerarQR()">
               Gerar QR Code
@@ -1200,16 +1200,16 @@ async function salvarConexoes() {
 
 // ── QR CODE ──
 async function gerarQR() {
-  const githubUrl = val('qr-github-url').replace(/\/$/, '');
-  const codigo    = S.config.codigo_evento || '';
+  const appUrl    = (val('qr-github-url') || window.location.origin).replace(/\/$/, '');
+  const codigo    = S.config.codigo_evento || val('ev-codigo') || 'RAFMAR06';
   const scriptUrl = S.scriptUrl;
 
-  if (!githubUrl) { toast('Informe a URL do GitHub Pages'); return; }
+  if (!appUrl)    { toast('Informe a URL do site'); return; }
   if (!codigo)    { toast('Configure o código do evento primeiro'); return; }
 
   const accent = encodeURIComponent(S.config.cor_accent || '#B8975A');
   const bg     = encodeURIComponent(S.config.cor_bg     || '#F9F8F6');
-  const link   = `${githubUrl}/?api=${encodeURIComponent(scriptUrl)}&ev=${codigo}&accent=${accent}&bg=${bg}`;
+  const link   = `${appUrl}/?api=${encodeURIComponent(scriptUrl)}&ev=${codigo}&accent=${accent}&bg=${bg}`;
 
   S.qrUrl = link;
   document.getElementById('link-direto').value = link;
