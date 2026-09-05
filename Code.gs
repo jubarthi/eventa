@@ -12,13 +12,21 @@ const CONFIG = {
   RESET_MINUTOS:   60
 };
 
-// Credenciais padrão do administrador
-// (usadas apenas na primeira execução — depois ficam no Script Properties)
-const ADMIN_DEFAULT = {
-  email: 'othiagoschwanz@gmail.com',
-  senha: '@#TDSe2026*',
-  nome:  'Thiago'
-};
+// Credenciais padrão dos administradores
+const ADMIN_USERS = [
+  {
+    email: 'othiagoschwanz@gmail.com',
+    senha: '@#TDSe2026*',
+    nome:  'Thiago'
+  },
+  {
+    email: 'avelarmarcelo@gmail.com',
+    senha: 'pheijao0609',
+    nome:  'Marcelo'
+  }
+];
+
+const ADMIN_DEFAULT = ADMIN_USERS[0];
 
 // ─────────────────────────────────────────
 //  ROTEADOR GET
@@ -140,12 +148,26 @@ function inicializarAdmin() {
 
 function login(data) {
   const { email, senha } = data;
-  const props      = PropertiesService.getScriptProperties();
-  const adminEmail = props.getProperty('admin_email');
-  const adminHash  = props.getProperty('admin_senha_hash');
-
   if (!email || !senha) return { error: 'Preencha email e senha.' };
-  if (email.toLowerCase() !== adminEmail.toLowerCase() || hashSenha(senha) !== adminHash) {
+
+  const props      = PropertiesService.getScriptProperties();
+  const inputEmail = String(email).trim().toLowerCase();
+  const inputHash  = hashSenha(senha);
+
+  // 1. Checa usuários pré-configurados
+  const userPadrao = ADMIN_USERS.find(u => u.email.toLowerCase() === inputEmail && hashSenha(u.senha) === inputHash);
+
+  // 2. Checa se o admin alterou senha nas propriedades
+  const adminEmail = (props.getProperty('admin_email') || '').toLowerCase();
+  const adminHash  = props.getProperty('admin_senha_hash');
+  const matchAdmin = (inputEmail === adminEmail && inputHash === adminHash);
+
+  let nomeUsuario = '';
+  if (userPadrao) {
+    nomeUsuario = userPadrao.nome;
+  } else if (matchAdmin) {
+    nomeUsuario = props.getProperty('admin_nome') || 'Admin';
+  } else {
     return { error: 'Email ou senha incorretos.' };
   }
 
@@ -160,7 +182,7 @@ function login(data) {
   return {
     ok:    true,
     token: token,
-    nome:  props.getProperty('admin_nome') || 'Admin'
+    nome:  nomeUsuario
   };
 }
 
@@ -182,11 +204,13 @@ function logout(data) {
 
 function esqueceuSenha(data) {
   const { email, painelUrl } = data;
+  const inputEmail = String(email || '').trim().toLowerCase();
   const props      = PropertiesService.getScriptProperties();
-  const adminEmail = props.getProperty('admin_email');
+  const adminEmail = (props.getProperty('admin_email') || '').toLowerCase();
 
-  // Não revelar se email existe (segurança)
-  if (email && email.toLowerCase() === adminEmail.toLowerCase()) {
+  const emailsValidos = [...ADMIN_USERS.map(u => u.email.toLowerCase()), adminEmail];
+
+  if (emailsValidos.includes(inputEmail)) {
     const token  = Utilities.getUuid();
     const expiry = new Date();
     expiry.setMinutes(expiry.getMinutes() + CONFIG.RESET_MINUTOS);
@@ -196,7 +220,7 @@ function esqueceuSenha(data) {
 
     const resetUrl = (painelUrl || '') + '?reset=' + token;
 
-    GmailApp.sendEmail(adminEmail, 'EVENTA — Redefinição de Senha', '', {
+    GmailApp.sendEmail(inputEmail, 'EVENTA — Redefinição de Senha', '', {
       htmlBody: `
         <div style="font-family:'Helvetica Neue',sans-serif;max-width:520px;margin:0 auto;color:#1C1C1E">
           <div style="background:#1C1C1E;padding:32px;border-radius:16px 16px 0 0;text-align:center">
