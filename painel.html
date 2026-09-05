@@ -810,8 +810,10 @@
 ══════════════════════════════════ -->
 <script>
 // ── ESTADO ──
+const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz7MPa2nl3F-gvflB1bgrqL4t-kQhB4kKXdWqwjzw-2ivFWrKhQTKEDXhQucJU-1kgYRw/exec';
+
 const S = {
-  scriptUrl:    '',
+  scriptUrl:    DEFAULT_SCRIPT_URL,
   sessionToken: '',
   nomeAdmin:    '',
   resetToken:   '',
@@ -824,6 +826,11 @@ const S = {
 // ── INIT ──
 window.addEventListener('DOMContentLoaded', () => {
 
+  // Garantir URL padrão se não houver no localStorage
+  if (!localStorage.getItem('eventa_script_url')) {
+    localStorage.setItem('eventa_script_url', DEFAULT_SCRIPT_URL);
+  }
+
   // Verificar se há token de reset na URL
   const params     = new URLSearchParams(window.location.search);
   const resetToken = params.get('reset');
@@ -835,7 +842,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Verificar sessão salva
   const session   = JSON.parse(localStorage.getItem('eventa_session') || 'null');
-  const scriptUrl = localStorage.getItem('eventa_script_url');
+  const scriptUrl = localStorage.getItem('eventa_script_url') || DEFAULT_SCRIPT_URL;
 
   if (session && session.token && scriptUrl) {
     S.scriptUrl   = scriptUrl;

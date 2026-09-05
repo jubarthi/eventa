@@ -403,8 +403,10 @@
 ══════════════════════════════════ -->
 <script>
 // ── ESTADO ──
+const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbz7MPa2nl3F-gvflB1bgrqL4t-kQhB4kKXdWqwjzw-2ivFWrKhQTKEDXhQucJU-1kgYRw/exec';
+
 const STATE = {
-  scriptUrl: '',
+  scriptUrl: DEFAULT_API_URL,
   codigo: '',
   eventoData: null,
   arquivos: [],
@@ -417,7 +419,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const api    = params.get('api');
   const ev     = params.get('ev');
 
-  // URL param tem prioridade; se não, usa o que foi salvo pelo painel no mesmo browser
+  // URL param tem prioridade; se não, usa localStorage ou o padrão da aplicação
   if (api) {
     STATE.scriptUrl = decodeURIComponent(api);
   } else {
