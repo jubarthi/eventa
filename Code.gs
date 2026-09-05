@@ -96,6 +96,19 @@ function respondAuthPost(data, fn) {
   return respond(fn());
 }
 
+const EVENTO_DEFAULT = {
+  titulo:            'Casamento Rafa & Marcelo',
+  subtitulo:         'Celebrando o Amor 💒',
+  data_evento:       '2026-09-06',
+  codigo_evento:     'RAFMAR06',
+  mensagem:          'Sejam muito bem-vindos ao nosso casamento! Compartilhe conosco todas as fotos e vídeos que você tirar hoje para guardarmos para sempre. 💛',
+  msg_agradecimento: 'Muito obrigado por fazer parte desse dia inesquecível e por compartilhar suas memórias conosco! 💛',
+  tema:              'classico',
+  cor_accent:        '#B8975A',
+  cor_bg:            '#F9F8F6',
+  ativo:             'true'
+};
+
 // ─────────────────────────────────────────
 //  AUTENTICAÇÃO
 // ─────────────────────────────────────────
@@ -108,19 +121,16 @@ function inicializarAdmin() {
     props.setProperty('admin_nome',       ADMIN_DEFAULT.nome);
   }
 
-  // Garantir que PRIWAG04 está na lista de links
+  // Garantir que RAFMAR06 está na lista de links
   const linksRaw = props.getProperty('eventa_links');
   const links    = linksRaw ? JSON.parse(linksRaw) : [];
-  const temPriwag = links.some(l => l.codigo === 'PRIWAG04');
-  if (!temPriwag) {
-    const linkPriwag = 'https://jubarthi.github.io/eventa/?api=' +
-      encodeURIComponent('https://script.google.com/macros/s/AKfycbwecEveKPdBlqOfuUUO8-ieEQ_FjnwCRUzg33AO6GtQtxciEMoIGOR72dwoVQ82aKS_mA/exec') +
-      '&ev=PRIWAG04&accent=%23B8975A&bg=%23F9F8F6';
+  const temRafa = links.some(l => l.codigo === 'RAFMAR06');
+  if (!temRafa) {
     links.unshift({
-      id:        'priwag04-fixo',
-      codigo:    'PRIWAG04',
-      nome:      'Casamento Priscila e Wagner',
-      link:      linkPriwag,
+      id:        'rafmar06-fixo',
+      codigo:    'RAFMAR06',
+      nome:      'Casamento Rafa & Marcelo',
+      link:      '',
       expiry:    '',
       criado_em: new Date().toISOString()
     });
@@ -289,6 +299,10 @@ function saveConfig(data) {
 function getConfig() {
   const sheet = getOrCreateSheet(CONFIG.SHEET_CONFIG);
   const data  = sheet.getDataRange().getValues();
+  if (data.length <= 1 && (!data[0] || !data[0][0])) {
+    saveConfig(EVENTO_DEFAULT);
+    return EVENTO_DEFAULT;
+  }
   const cfg   = {};
   const tz    = Session.getScriptTimeZone();
   data.forEach(row => {
